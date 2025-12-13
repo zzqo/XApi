@@ -77,7 +77,6 @@ export const RequestHeader: React.FC<RequestHeaderProps> = ({ request, onRequest
                     className={`rounded-r-md px-6 py-2 text-sm font-bold text-white transition-all flex items-center flex-shrink-0 shadow-sm border border-transparent ${isSending ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 hover:shadow active:bg-green-800'}`}
                 >
                     {isSending ? 'Sending...' : 'SEND'}
-                    {!isSending && <span className="ml-2 text-lg leading-none">›</span>}
                 </button>
             </div>
         </div>

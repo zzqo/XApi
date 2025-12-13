@@ -30,10 +30,6 @@ const App: React.FC = () => {
   const [tabs, setTabs] = useState<TabItem[]>([{ id: 'welcome', type: 'welcome', title: 'Welcome' }]);
   const [activeTabId, setActiveTabId] = useState<string>('welcome');
 
-  const [response, setResponse] = useState<HttpResponse | null>(null);
-  const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('history');
   const [history, setHistory] = useState<LoggedRequest[]>([]);
   const [collections, setCollections] = useState<CollectionItem[]>([]);
@@ -44,7 +40,11 @@ const App: React.FC = () => {
   
   // --- Computed ---
   // Helper to find the active request object from the tabs
-  const activeRequest = tabs.find(t => t.id === activeTabId)?.data || null;
+  const activeTab = tabs.find(t => t.id === activeTabId);
+  const activeRequest = activeTab?.data || null;
+  const activeResponse = activeTab?.response || null;
+  const activeError = activeTab?.error || null;
+  const activeIsLoading = activeTab?.isLoading || false;
 
   // --- Effects ---
 
@@ -97,7 +97,10 @@ const App: React.FC = () => {
           type: 'request',
           title: req.name,
           method: req.method,
-          data: req
+          data: req,
+          isLoading: false,
+          response: null,
+          error: null
       };
       
       // Remove welcome tab if it's the only one
@@ -110,7 +113,6 @@ const App: React.FC = () => {
       
       setTabs(newTabs);
       setActiveTabId(req.id);
-      setResponse(null); // Clear response on switch? Maybe keep per tab later
   };
 
   const handleTabClose = (id: string, e?: React.MouseEvent) => {
@@ -130,7 +132,6 @@ const App: React.FC = () => {
 
   const handleTabClick = (id: string) => {
       setActiveTabId(id);
-      // setResponse(null); // Optional: clear response when switching tabs? Or store response in tab
   };
 
   const handleTabReorder = (fromIndex: number, toIndex: number) => {
@@ -190,15 +191,20 @@ const App: React.FC = () => {
 
   const handleSendRequest = async () => {
     if (!activeRequest) return;
-    setIsSending(true);
-    setResponse(null);
-    setError(null);
+    
+    // Set Loading State for this tab
+    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isLoading: true, response: null, error: null } : t));
+    
     const startTime = Date.now();
 
     try {
       const headersInit: Record<string, string> = {};
       activeRequest.headers.filter(h => h.enabled).forEach(h => {
-        headersInit[h.key] = h.value;
+        const key = h.key.trim();
+        // Filter out pseudo-headers (starting with :) which cause "Invalid name" in fetch
+        if (key && !key.startsWith(':')) {
+           headersInit[key] = h.value;
+        }
       });
 
       const options: RequestInit = {
@@ -237,19 +243,19 @@ const App: React.FC = () => {
       const resHeaders: Record<string, string> = {};
       res.headers.forEach((val, key) => { resHeaders[key] = val; });
 
-      setResponse({
+      const newResponse: HttpResponse = {
         status: res.status,
         statusText: res.statusText,
         headers: resHeaders,
         body: text,
         time: endTime - startTime,
         size: new Blob([text]).size
-      });
+      };
+
+      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isLoading: false, response: newResponse } : t));
 
     } catch (err: any) {
-      setError(err.message || 'Network Error.');
-    } finally {
-      setIsSending(false);
+      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isLoading: false, error: err.message || 'Network Error.' } : t));
     }
   };
 
@@ -274,8 +280,6 @@ const App: React.FC = () => {
               return c;
           });
           setCollections(updatedCols);
-          // Persist strictly on save? Or debounce save? 
-          // For name changes user expects sidebar update immediately.
       }
   };
 
@@ -428,8 +432,7 @@ const App: React.FC = () => {
       const newHistory = history.filter(h => h.id !== id);
       setHistory(newHistory);
       chrome.storage.local.set({ logs: newHistory });
-      
-      // Also close tab if open? Optional, but generally good UX to keep it open if user was working on it.
+      // We do NOT close the tab automatically if open, to allow user to continue using the imported request data
   };
 
   const handleToggleCollapse = (colId: string) => {
@@ -540,7 +543,7 @@ const App: React.FC = () => {
                         request={activeRequest}
                         onRequestChange={updateActiveRequest}
                         onSend={handleSendRequest}
-                        isSending={isSending}
+                        isSending={activeIsLoading}
                     />
                     
                     {/* Split View */}
@@ -552,7 +555,7 @@ const App: React.FC = () => {
                             />
                         </div>
                         <div className="w-1/2 min-w-[400px] border-l border-gray-200 h-full overflow-hidden">
-                            <ResponseViewer response={response} error={error} />
+                            <ResponseViewer response={activeResponse} error={activeError} />
                         </div>
                     </div>
                 </>

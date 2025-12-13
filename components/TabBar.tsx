@@ -132,6 +132,16 @@ export const TabBar: React.FC<TabBarProps> = ({
         return () => window.removeEventListener('resize', checkOverflow);
     }, [tabs]);
 
+    // Scroll active tab into view
+    useEffect(() => {
+        if (activeTabId && scrollContainerRef.current) {
+            const activeElement = document.getElementById(`tab-${activeTabId}`);
+            if (activeElement) {
+                activeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+    }, [activeTabId]);
+
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
              setSaveDropdown(null);
@@ -159,6 +169,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                 {tabs.map(tab => (
                     <div 
                         key={tab.id}
+                        id={`tab-${tab.id}`}
                         draggable={!editingTabId}
                         onDragStart={(e) => handleDragStart(e, tab.id)}
                         onDragEnd={handleDragEnd}

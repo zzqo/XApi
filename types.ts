@@ -1,4 +1,5 @@
 
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
 
 export interface KeyValue {
@@ -65,4 +66,8 @@ export interface TabItem {
     method?: HttpMethod;
     isDirty?: boolean; // Has unsaved changes (optional for future)
     data?: HttpRequest; // The actual request object if it's a request tab
+    // Persist response state per tab
+    response?: HttpResponse | null;
+    error?: string | null;
+    isLoading?: boolean;
 }
