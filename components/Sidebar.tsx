@@ -23,6 +23,7 @@ interface SidebarProps {
   onRenameRequest: (reqId: string, newName: string) => void;
   onDeleteCollection: (id: string) => void;
   onDeleteRequest: (req: HttpRequest) => void;
+  onDuplicateRequest: (reqId: string) => void; // New Prop
   onToggleCollapse: (colId: string) => void;
   onMoveRequest: (reqId: string, targetColId: string) => void;
 }
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRenameRequest,
   onDeleteCollection,
   onDeleteRequest,
+  onDuplicateRequest,
   onToggleCollapse,
   onMoveRequest
 }) => {
@@ -225,10 +227,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                )}
                {validHistory.map(item => {
                    const { origin, path } = formatUrl(item.url);
+                   const isActive = activeRequestId === item.id;
                    return (
                      <li 
                         key={item.id} 
-                        className="relative px-3 py-2 hover:bg-white cursor-pointer group transition-colors border-l-2 border-transparent hover:border-green-500"
+                        className={`
+                            relative px-3 py-2 cursor-pointer group transition-colors border-l-2
+                            ${isActive 
+                                ? 'bg-green-50 border-green-500' 
+                                : 'hover:bg-white border-transparent hover:border-green-500'
+                            }
+                        `}
                         onClick={() => onImportLoggedRequest(item)}
                      >
                        <div className="flex items-center justify-between mb-0.5">
@@ -249,13 +258,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                            <span className="text-[10px] text-gray-500 truncate font-mono" title={path}>{path}</span>
                        </div>
 
-                       {/* Delete Button - Visible on Hover */}
+                       {/* Delete Button - Visible on Hover - Centered Vertically */}
                        <button
                          onClick={(e) => { e.stopPropagation(); onDeleteLog(item.id); }}
-                         className="absolute right-2 top-2 hidden group-hover:block p-1 text-gray-400 hover:text-red-500 bg-white rounded shadow-sm border border-gray-100 hover:border-red-200 transition-all"
+                         className="absolute right-2 top-1/2 transform -translate-y-1/2 hidden group-hover:block p-1 text-gray-400 hover:text-red-500 bg-white rounded shadow-sm border border-gray-100 hover:border-red-200 transition-all z-10"
                          title="Delete Log"
                        >
-                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                        </button>
                      </li>
                    );
@@ -403,6 +412,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                         Rename
                     </button>
+                    <button 
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-gray-700"
+                        onClick={() => {
+                            onDuplicateRequest(contextMenu.id);
+                            closeContextMenu();
+                        }}
+                    >
+                        Duplicate
+                    </button>
                      <button 
                         className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-red-600"
                         onClick={() => {
@@ -410,7 +428,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             closeContextMenu();
                         }}
                     >
-                        Delete Request
+                        Delete
                     </button>
                   </>
               )}

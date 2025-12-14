@@ -48,16 +48,25 @@ const App: React.FC = () => {
 
   // --- Effects ---
 
-  // 1. Load Data from Storage & URL Params
+  // 1. Load Data from Storage (Logs, Collections, and PERSISTED TABS)
   useEffect(() => {
     if (chrome && chrome.storage && chrome.storage.local) {
       // Initial Load
-      chrome.storage.local.get(['collections', 'logs'], (result) => {
+      chrome.storage.local.get(['collections', 'logs', 'savedTabs', 'savedActiveTabId'], (result) => {
         if (result.collections) setCollections(result.collections);
+        
+        // Restore Tabs
+        if (result.savedTabs && result.savedTabs.length > 0) {
+            setTabs(result.savedTabs);
+        }
+        if (result.savedActiveTabId) {
+            setActiveTabId(result.savedActiveTabId);
+        }
+
         const logs = result.logs || [];
         setHistory(logs);
 
-        // Check for URL Param "logId" to load specific log
+        // Check for URL Param "logId" to load specific log (Overrides saved tabs if present)
         const params = new URLSearchParams(window.location.search);
         const logId = params.get('logId');
         if (logId) {
@@ -81,6 +90,16 @@ const App: React.FC = () => {
       return () => chrome.storage.onChanged.removeListener(listener);
     }
   }, []);
+
+  // 2. Persist Tabs whenever they change
+  useEffect(() => {
+      if (chrome && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ 
+              savedTabs: tabs,
+              savedActiveTabId: activeTabId 
+          });
+      }
+  }, [tabs, activeTabId]);
 
   // --- Tab Handlers ---
 
@@ -411,20 +430,50 @@ const App: React.FC = () => {
   };
 
   const handleDeleteRequest = (req: HttpRequest) => {
-      if (confirm(`Delete request "${req.name}"?`)) {
-          const updatedCols = collections.map(c => ({
-              ...c,
-              requests: c.requests.filter(r => r.id !== req.id)
-          }));
+      // Direct delete without confirmation
+      const updatedCols = collections.map(c => ({
+          ...c,
+          requests: c.requests.filter(r => r.id !== req.id)
+      }));
+      setCollections(updatedCols);
+      chrome.storage.local.set({ collections: updatedCols });
+      
+      // Close tab
+      const newTabs = tabs.filter(t => t.id !== req.id);
+      setTabs(newTabs.length ? newTabs : [{ id: 'welcome', type: 'welcome', title: 'Welcome' }]);
+      if (activeTabId === req.id) {
+          setActiveTabId(newTabs.length ? newTabs[0].id : 'welcome');
+      }
+  };
+
+  const handleDuplicateRequest = (reqId: string) => {
+      let foundReq: HttpRequest | undefined;
+      let foundColId: string | undefined;
+
+      collections.forEach(col => {
+          const r = col.requests.find(x => x.id === reqId);
+          if (r) {
+              foundReq = r;
+              foundColId = col.id;
+          }
+      });
+
+      if (foundReq && foundColId) {
+          const newReq = { 
+              ...foundReq, 
+              id: generateId(), 
+              name: `${foundReq.name} Copy` 
+          };
+          
+          const updatedCols = collections.map(c => {
+              if (c.id === foundColId) {
+                  return { ...c, requests: [...c.requests, newReq] };
+              }
+              return c;
+          });
+          
           setCollections(updatedCols);
           chrome.storage.local.set({ collections: updatedCols });
-          
-          // Close tab
-          const newTabs = tabs.filter(t => t.id !== req.id);
-          setTabs(newTabs.length ? newTabs : [{ id: 'welcome', type: 'welcome', title: 'Welcome' }]);
-          if (activeTabId === req.id) {
-              setActiveTabId(newTabs.length ? newTabs[0].id : 'welcome');
-          }
       }
   };
   
@@ -511,6 +560,7 @@ const App: React.FC = () => {
         onRenameRequest={handleRenameRequest}
         onDeleteCollection={handleDeleteCollection}
         onDeleteRequest={handleDeleteRequest}
+        onDuplicateRequest={handleDuplicateRequest}
         onToggleCollapse={handleToggleCollapse}
         onMoveRequest={handleMoveRequest}
       />
