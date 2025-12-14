@@ -161,15 +161,18 @@ const App: React.FC = () => {
   };
 
   const handleTabRename = (id: string, newName: string) => {
-      setTabs(tabs.map(t => t.id === id ? { ...t, title: newName } : t));
+      const tab = tabs.find(t => t.id === id);
       
       // If it's a saved request, update the collection as well
-      const tab = tabs.find(t => t.id === id);
       if (tab && tab.data && tab.data.collectionId) {
           handleRenameRequest(tab.data.id, newName);
-      } else if (tab && tab.data) {
-          // If draft, just update local data state so it persists in tab
-          tab.data.name = newName;
+      } else {
+          // Draft request: Update Tab State directly
+          setTabs(prev => prev.map(t => 
+            t.id === id 
+            ? { ...t, title: newName, data: t.data ? { ...t.data, name: newName } : undefined } 
+            : t
+          ));
       }
   };
 
@@ -408,8 +411,12 @@ const App: React.FC = () => {
       setCollections(updatedCols);
       chrome.storage.local.set({ collections: updatedCols });
 
-      // Update tab title if open
-      setTabs(tabs.map(t => t.id === reqId ? { ...t, title: newName } : t));
+      // Update tab title if open, AND update the inner data name to prevent revert on edit
+      setTabs(prev => prev.map(t => 
+          t.id === reqId 
+          ? { ...t, title: newName, data: t.data ? { ...t.data, name: newName } : undefined } 
+          : t
+      ));
   };
 
   const handleDeleteCollection = (id: string) => {
