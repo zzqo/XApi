@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LoggedRequest, SidebarTab, CollectionItem, HttpRequest } from '../types';
-import { formatUrl, formatTime, getMethodColor } from '../utils';
+import { formatUrl, formatTime, getMethodColor, generateCurl } from '../utils';
 import { APP_CONFIG } from '../config';
 import { Logo } from './Logo';
 
@@ -18,13 +18,13 @@ interface SidebarProps {
   onCreateRequest: () => void;
   onImportCurl: () => void;
   onClearHistory: () => void;
-  onDeleteLog: (id: string) => void; // New prop for single deletion
+  onDeleteLog: (id: string) => void;
   // CRUD Actions
   onRenameCollection: (id: string, newName: string) => void;
   onRenameRequest: (reqId: string, newName: string) => void;
   onDeleteCollection: (id: string) => void;
   onDeleteRequest: (req: HttpRequest) => void;
-  onDuplicateRequest: (reqId: string) => void; // New Prop
+  onDuplicateRequest: (reqId: string) => void;
   onToggleCollapse: (colId: string) => void;
   onMoveRequest: (reqId: string, targetColId: string) => void;
   // Interception Toggle
@@ -55,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isRecording,
   onToggleRecording
 }) => {
-  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'collection' | 'request', id: string, data?: any } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'collection' | 'request' | 'log', id: string, data?: any } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingType, setEditingType] = useState<'collection' | 'request' | null>(null);
   const [editName, setEditName] = useState('');
@@ -75,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   });
 
   // --- Context Menu Handlers ---
-  const handleContextMenu = (e: React.MouseEvent, type: 'collection' | 'request', id: string, data?: any) => {
+  const handleContextMenu = (e: React.MouseEvent, type: 'collection' | 'request' | 'log', id: string, data?: any) => {
       e.preventDefault();
       setContextMenu({ x: e.clientX, y: e.clientY, type, id, data });
   };
@@ -100,6 +100,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }
       setEditingId(null);
       setEditingType(null);
+  };
+
+  const handleCopyAsCurl = (log: LoggedRequest) => {
+      const curl = generateCurl(log);
+      navigator.clipboard.writeText(curl).then(() => {
+          // Could add a toast here
+      });
+      closeContextMenu();
   };
 
   // --- DnD Handlers ---
@@ -211,21 +219,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 overflow-y-auto no-scrollbar">
         {activeTab === 'history' && (
           <div>
-             <div className="p-2 bg-gray-100 flex justify-between items-center sticky top-0 z-10 border-b border-gray-200">
-                 <span className="text-xs font-semibold text-gray-400">{validHistory.length} requests</span>
-                 <div className="flex items-center space-x-2">
-                    {/* Interception Toggle */}
-                    <button 
-                        onClick={onToggleRecording} 
-                        className={`flex items-center space-x-1.5 px-2 py-0.5 rounded transition-colors text-[10px] font-medium border shadow-sm ${isRecording ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
-                        title={isRecording ? "Stop Intercepting" : "Start Intercepting"}
-                    >
-                        <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
-                        <span>{isRecording ? 'Recording' : 'Paused'}</span>
-                    </button>
+             <div className="p-2 bg-gray-100 flex items-center sticky top-0 z-10 border-b border-gray-200">
+                 <span className="text-xs font-semibold text-gray-400 mr-2">{validHistory.length} requests</span>
+                 
+                 {/* Interception Toggle - Positioned next to stats */}
+                 <button 
+                    onClick={onToggleRecording} 
+                    className={`flex items-center space-x-1.5 px-2 py-0.5 rounded transition-colors text-[10px] font-medium border shadow-sm ${isRecording ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                    title={isRecording ? "Stop Intercepting" : "Start Intercepting"}
+                 >
+                    <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
+                    <span>{isRecording ? 'Recording' : 'Paused'}</span>
+                 </button>
                     
-                    <button onClick={onClearHistory} className="text-xs text-gray-400 hover:text-red-500">Clear All</button>
-                 </div>
+                 <div className="flex-1"></div>
+                 <button onClick={onClearHistory} className="text-xs text-gray-400 hover:text-red-500">Clear All</button>
              </div>
 
              {/* Search Filter */}
@@ -260,6 +268,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             }
                         `}
                         onClick={() => onImportLoggedRequest(item)}
+                        onContextMenu={(e) => handleContextMenu(e, 'log', item.id, item)}
                      >
                        <div className="flex items-center justify-between mb-0.5">
                          <span className={`text-[10px] font-bold w-12 ${getMethodColor(item.method)}`}>
@@ -333,7 +342,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             type="text" 
                             value={editName}
                             onClick={(e) => e.stopPropagation()}
-                            // Corrected to reference e.target.value
                             onChange={(e) => setEditName(e.target.value)}
                             onBlur={submitRename}
                             onKeyDown={(e) => e.key === 'Enter' && submitRename()}
@@ -368,7 +376,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         type="text" 
                                         value={editName}
                                         onClick={(e) => e.stopPropagation()}
-                                        // Corrected to reference e.target.value
                                         onChange={(e) => setEditName(e.target.value)}
                                         onBlur={submitRename}
                                         onKeyDown={(e) => e.key === 'Enter' && submitRename()}
@@ -399,58 +406,86 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Custom Context Menu */}
       {contextMenu && (
           <div 
-            className="fixed bg-white border border-gray-200 shadow-lg rounded py-1 z-50 w-32"
+            className="fixed bg-white border border-gray-200 shadow-lg rounded py-1 z-50 w-44"
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={(e) => e.stopPropagation()}
           >
-              {contextMenu.type === 'collection' ? (
+              {contextMenu.type === 'collection' && (
                   <>
                     <button 
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-gray-700"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-gray-700 flex items-center"
                         onClick={() => {
                             const col = collections.find(c => c.id === contextMenu.id);
                             if (col) startRename(contextMenu.id, col.name, 'collection');
                         }}
                     >
+                        <svg className="w-3.5 h-3.5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                         Rename
                     </button>
                     <button 
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-red-600"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-red-600 flex items-center"
                         onClick={() => {
                             onDeleteCollection(contextMenu.id);
                             closeContextMenu();
                         }}
                     >
+                        <svg className="w-3.5 h-3.5 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         Delete
                     </button>
                   </>
-              ) : (
+              )}
+              {contextMenu.type === 'request' && (
                   <>
                     <button 
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-gray-700"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-gray-700 flex items-center"
                         onClick={() => {
                             const req = collections.flatMap(c => c.requests).find(r => r.id === contextMenu.id);
                             if (req) startRename(contextMenu.id, req.name, 'request');
                         }}
                     >
+                        <svg className="w-3.5 h-3.5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                         Rename
                     </button>
                     <button 
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-gray-700"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-gray-700 flex items-center"
                         onClick={() => {
                             onDuplicateRequest(contextMenu.id);
                             closeContextMenu();
                         }}
                     >
+                        <svg className="w-3.5 h-3.5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                         Duplicate
                     </button>
                      <button 
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-red-600"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-red-600 flex items-center"
                         onClick={() => {
                             onDeleteRequest(contextMenu.data);
                             closeContextMenu();
                         }}
                     >
+                        <svg className="w-3.5 h-3.5 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        Delete
+                    </button>
+                  </>
+              )}
+              {contextMenu.type === 'log' && (
+                  <>
+                    <button 
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-gray-700 flex items-center"
+                        onClick={() => handleCopyAsCurl(contextMenu.data)}
+                    >
+                        <svg className="w-3.5 h-3.5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        Copy as cURL (bash)
+                    </button>
+                    <div className="border-t border-gray-100 my-1"></div>
+                    <button 
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-100 text-red-600 flex items-center"
+                        onClick={() => {
+                            onDeleteLog(contextMenu.id);
+                            closeContextMenu();
+                        }}
+                    >
+                        <svg className="w-3.5 h-3.5 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         Delete
                     </button>
                   </>
