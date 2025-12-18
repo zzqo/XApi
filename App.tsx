@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('history');
   const [history, setHistory] = useState<LoggedRequest[]>([]);
   const [collections, setCollections] = useState<CollectionItem[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
 
   // Modals
   const [isCurlModalOpen, setIsCurlModalOpen] = useState(false);
@@ -52,8 +53,9 @@ const App: React.FC = () => {
   useEffect(() => {
     if (chrome && chrome.storage && chrome.storage.local) {
       // Initial Load
-      chrome.storage.local.get(['collections', 'logs', 'savedTabs', 'savedActiveTabId'], (result) => {
+      chrome.storage.local.get(['collections', 'logs', 'savedTabs', 'savedActiveTabId', 'isRecording'], (result) => {
         if (result.collections) setCollections(result.collections);
+        setIsRecording(!!result.isRecording);
         
         // Restore Tabs
         if (result.savedTabs && result.savedTabs.length > 0) {
@@ -84,6 +86,9 @@ const App: React.FC = () => {
         }
         if (changes.collections) {
           setCollections(changes.collections.newValue);
+        }
+        if (changes.isRecording) {
+          setIsRecording(changes.isRecording.newValue);
         }
       };
       chrome.storage.onChanged.addListener(listener);
@@ -575,6 +580,12 @@ const App: React.FC = () => {
       }
   };
 
+  const handleToggleRecording = () => {
+      const newState = !isRecording;
+      setIsRecording(newState);
+      chrome.storage.local.set({ isRecording: newState });
+  };
+
   return (
     <div className="flex h-screen w-screen bg-gray-50 text-gray-900 font-sans overflow-hidden">
       <Sidebar 
@@ -599,6 +610,9 @@ const App: React.FC = () => {
         onDuplicateRequest={handleDuplicateRequest}
         onToggleCollapse={handleToggleCollapse}
         onMoveRequest={handleMoveRequest}
+        // Interception Toggle
+        isRecording={isRecording}
+        onToggleRecording={handleToggleRecording}
       />
       
       <div className="flex-1 flex flex-col min-w-0 bg-white">

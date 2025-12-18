@@ -156,9 +156,7 @@ export const TabBar: React.FC<TabBarProps> = ({
 
     return (
         <div className="flex items-end bg-gray-100 pt-1 px-1 relative select-none">
-            {/* Absolute border line: Acts as the bottom track. 
-                Active tab covers this because it has border-b-white and sits on top.
-                Inactive tabs have border-b-gray-200 which blends with this line. */}
+            {/* Absolute border line: Acts as the bottom track. */}
             <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-200 z-0"></div>
 
             {/* Scrollable Area */}
@@ -166,74 +164,82 @@ export const TabBar: React.FC<TabBarProps> = ({
                 ref={scrollContainerRef}
                 className={`flex-1 flex overflow-x-auto no-scrollbar items-end relative z-10 ${hasOverflow ? 'pr-8' : ''}`}
             >
-                {tabs.map(tab => (
-                    <div 
-                        key={tab.id}
-                        id={`tab-${tab.id}`}
-                        draggable={!editingTabId}
-                        onDragStart={(e) => handleDragStart(e, tab.id)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleDragOver(e, tab.id)}
-                        onClick={() => onTabClick(tab.id)}
-                        onContextMenu={(e) => handleContextMenu(e, tab.id)}
-                        onDoubleClick={() => handleDoubleClick(tab)}
-                        className={`
-                            group flex items-center min-w-[140px] max-w-[200px] h-9 px-3 mr-1 text-xs cursor-pointer select-none border-t border-l border-r rounded-t-md transition-all relative flex-shrink-0
-                            ${activeTabId === tab.id 
-                                ? 'bg-white border-gray-200 border-b border-b-white text-gray-800 font-medium' 
-                                : 'bg-gray-100 border-transparent border-b border-b-gray-200 hover:bg-gray-200 text-gray-500'}
-                            ${draggedTabId === tab.id ? 'opacity-50' : ''}
-                        `}
-                    >
-                        {tab.type === 'request' && (
-                            <span className={`mr-2 font-bold text-[10px] ${getMethodColor(tab.method)}`}>
-                                {tab.method}
-                            </span>
-                        )}
-                        {tab.type === 'welcome' && <span className="mr-2">🏠</span>}
-                        
-                        {editingTabId === tab.id ? (
-                            <input 
-                                autoFocus
-                                type="text"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={handleRenameSubmit}
-                                onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit()}
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex-1 w-full bg-white border border-blue-500 rounded px-1 py-0.5 text-xs outline-none"
-                            />
-                        ) : (
-                            <span className="truncate flex-1" title={tab.title}>{tab.title}</span>
-                        )}
-                        
-                        {/* Action Buttons */}
-                        <div className={`flex items-center ml-2 space-x-1 ${activeTabId === tab.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                            {/* Save Button - Only show if request is NOT part of a collection yet */}
-                            {tab.type === 'request' && !tab.data?.collectionId && (
-                                <button 
-                                    onClick={(e) => handleSaveClick(e, tab.id)}
-                                    className="p-0.5 rounded-full hover:bg-green-100 hover:text-green-600 text-gray-400"
-                                    title="Save to Collection"
-                                >
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                </button>
+                {tabs.map((tab, index) => (
+                    <React.Fragment key={tab.id}>
+                        <div 
+                            id={`tab-${tab.id}`}
+                            draggable={!editingTabId}
+                            onDragStart={(e) => handleDragStart(e, tab.id)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => handleDragOver(e, tab.id)}
+                            onClick={() => onTabClick(tab.id)}
+                            onContextMenu={(e) => handleContextMenu(e, tab.id)}
+                            onDoubleClick={() => handleDoubleClick(tab)}
+                            className={`
+                                group flex items-center min-w-[140px] max-w-[200px] h-9 px-3 text-xs cursor-pointer select-none border-t border-l border-r rounded-t-md transition-all relative flex-shrink-0
+                                ${activeTabId === tab.id 
+                                    ? 'bg-white border-gray-200 border-b border-b-white text-gray-800 font-medium z-20' 
+                                    : 'bg-gray-100 border-transparent border-b border-b-gray-200 hover:bg-gray-200 text-gray-500 z-10'}
+                                ${draggedTabId === tab.id ? 'opacity-50' : ''}
+                            `}
+                        >
+                            {tab.type === 'request' && (
+                                <span className={`mr-2 font-bold text-[10px] ${getMethodColor(tab.method)}`}>
+                                    {tab.method}
+                                </span>
                             )}
+                            {tab.type === 'welcome' && <span className="mr-2">🏠</span>}
+                            
+                            {editingTabId === tab.id ? (
+                                <input 
+                                    autoFocus
+                                    type="text"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onBlur={handleRenameSubmit}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit()}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 w-full bg-white border border-blue-500 rounded px-1 py-0.5 text-xs outline-none"
+                                />
+                            ) : (
+                                <span className="truncate flex-1" title={tab.title}>{tab.title}</span>
+                            )}
+                            
+                            {/* Action Buttons */}
+                            <div className={`flex items-center ml-2 space-x-1 ${activeTabId === tab.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                                {tab.type === 'request' && !tab.data?.collectionId && (
+                                    <button 
+                                        onClick={(e) => handleSaveClick(e, tab.id)}
+                                        className="p-0.5 rounded-full hover:bg-green-100 hover:text-green-600 text-gray-400"
+                                        title="Save to Collection"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    </button>
+                                )}
 
-                            {/* Close Button */}
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onTabClose(tab.id, e); }}
-                                className="p-0.5 rounded-full hover:bg-red-100 hover:text-red-600 text-gray-400"
-                                title="Close Tab"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onTabClose(tab.id, e); }}
+                                    className="p-0.5 rounded-full hover:bg-red-100 hover:text-red-600 text-gray-400"
+                                    title="Close Tab"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
                         </div>
-                    </div>
+
+                        {/* Visual Separator between tabs */}
+                        {index < tabs.length - 1 && (
+                            <div 
+                                className={`w-px h-4 self-center bg-gray-300 mx-0.5 transition-opacity duration-150 flex-shrink-0
+                                    ${activeTabId === tab.id || activeTabId === tabs[index + 1].id ? 'opacity-0' : 'opacity-100'}
+                                `}
+                            />
+                        )}
+                    </React.Fragment>
                 ))}
             </div>
 
-            {/* Overflow Menu Button - Only show if hasOverflow */}
+            {/* Overflow Menu Button */}
             {hasOverflow && (
                 <div className="absolute right-0 top-0 bottom-0 flex items-center bg-gradient-to-l from-gray-100 via-gray-100 to-transparent pl-4 pr-1 z-20" ref={overflowRef}>
                     <button 

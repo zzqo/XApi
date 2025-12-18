@@ -27,6 +27,9 @@ interface SidebarProps {
   onDuplicateRequest: (reqId: string) => void; // New Prop
   onToggleCollapse: (colId: string) => void;
   onMoveRequest: (reqId: string, targetColId: string) => void;
+  // Interception Toggle
+  isRecording?: boolean;
+  onToggleRecording?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -48,7 +51,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDeleteRequest,
   onDuplicateRequest,
   onToggleCollapse,
-  onMoveRequest
+  onMoveRequest,
+  isRecording,
+  onToggleRecording
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'collection' | 'request', id: string, data?: any } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -208,7 +213,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div>
              <div className="p-2 bg-gray-100 flex justify-between items-center sticky top-0 z-10 border-b border-gray-200">
                  <span className="text-xs font-semibold text-gray-400">{validHistory.length} requests</span>
-                 <button onClick={onClearHistory} className="text-xs text-gray-400 hover:text-red-500">Clear All</button>
+                 <div className="flex items-center space-x-2">
+                    {/* Interception Toggle */}
+                    <button 
+                        onClick={onToggleRecording} 
+                        className={`flex items-center space-x-1.5 px-2 py-0.5 rounded transition-colors text-[10px] font-medium border shadow-sm ${isRecording ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                        title={isRecording ? "Stop Intercepting" : "Start Intercepting"}
+                    >
+                        <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
+                        <span>{isRecording ? 'Recording' : 'Paused'}</span>
+                    </button>
+                    
+                    <button onClick={onClearHistory} className="text-xs text-gray-400 hover:text-red-500">Clear All</button>
+                 </div>
              </div>
 
              {/* Search Filter */}
@@ -316,6 +333,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             type="text" 
                             value={editName}
                             onClick={(e) => e.stopPropagation()}
+                            // Corrected to reference e.target.value
                             onChange={(e) => setEditName(e.target.value)}
                             onBlur={submitRename}
                             onKeyDown={(e) => e.key === 'Enter' && submitRename()}
@@ -350,6 +368,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         type="text" 
                                         value={editName}
                                         onClick={(e) => e.stopPropagation()}
+                                        // Corrected to reference e.target.value
                                         onChange={(e) => setEditName(e.target.value)}
                                         onBlur={submitRename}
                                         onKeyDown={(e) => e.key === 'Enter' && submitRename()}
